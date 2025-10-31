@@ -1,4 +1,4 @@
-const API = "http://localhost:5000"; //Remove from here "In Production". add to .env
+const API = "http://localhost:5001"; //Remove from here "In Production". add to .env
 
 export async function createReport(formData) {
   const r = await fetch(`${API}/api/v1/reports`, {
@@ -28,5 +28,11 @@ export async function postMessage(ticket, code, body) {
     body: JSON.stringify({ body })
   });
   if (!r.ok) throw new Error(`Message failed: ${r.status}`);
+  return r.json();
+}
+
+export async function fetchPublicReports() {
+  const r = await fetch(`${API}/api/v1/reports/public`);
+  if (!r.ok) throw new Error(`Fetch reports failed: ${r.status}`);
   return r.json();
 }

@@ -46,12 +46,20 @@ def create_app() -> Flask:
 
     # Create necessary folders and tables
     with app.app_context():
-        # Ensure instance folder exists for SQLite database (use Flask's instance_path)
-        # This guarantees the folder is created at the expected absolute path
-        os.makedirs(app.instance_path, exist_ok=True)
-        # Ensure the configured upload folder exists (Config.UPLOAD_FOLDER is absolute)
-        os.makedirs(app.config.get("UPLOAD_FOLDER", os.path.join(app.instance_path, "uploads")), exist_ok=True)
-        db.create_all()
+        try:
+            # Ensure instance folder exists for SQLite database (use Flask's instance_path)
+            # This guarantees the folder is created at the expected absolute path
+            os.makedirs(app.instance_path, exist_ok=True)
+            # Ensure the configured upload folder exists (Config.UPLOAD_FOLDER is absolute)
+            upload_folder = app.config.get("UPLOAD_FOLDER", os.path.join(app.instance_path, "uploads"))
+            os.makedirs(upload_folder, exist_ok=True)
+            # Create database tables
+            db.create_all()
+            print(f"✓ Database initialized at: {app.config.get('SQLALCHEMY_DATABASE_URI')}")
+            print(f"✓ Upload folder: {upload_folder}")
+        except Exception as e:
+            print(f"ERROR: Failed to initialize database or folders: {e}")
+            raise
 
     # -----------------------
     # Helper Functions
@@ -340,11 +348,74 @@ def create_app() -> Flask:
 
         return jsonify({"message": "Message posted", "id": msg.id}), 201
 
+    # -----------------------
+    # Error Handlers
+    # -----------------------
+    @app.errorhandler(500)
+    def internal_error(error):
+        """Handle internal server errors"""
+        app.logger.error(f'Server Error: {error}')
+        return jsonify({
+            "error": "Internal server error",
+            "message": "The server encountered an internal error. Please check the server logs."
+        }), 500
+
+    @app.errorhandler(404)
+    def not_found(error):
+        """Handle 404 errors"""
+        return jsonify({"error": "Not found"}), 404
+
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        """Handle uncaught exceptions"""
+        app.logger.error(f'Unhandled Exception: {e}', exc_info=True)
+        return jsonify({
+            "error": "An unexpected error occurred",
+            "message": str(e) if app.debug else "Please contact support"
+        }), 500
+
     return app
 
 
-app = create_app()
+def main():
+    """Main entry point with environment checks"""
+    import sys
+    
+    # Check Python version
+    if sys.version_info < (3, 10):
+        print("ERROR: Python 3.10 or higher is required")
+        print(f"Current version: {sys.version}")
+        sys.exit(1)
+    
+    # Check if SECRET_KEY is set
+    if not os.getenv("SECRET_KEY"):
+        print("WARNING: SECRET_KEY not set in environment")
+        print("Using a randomly generated key (tokens will be invalidated on restart)")
+    
+    print("="*60)
+    print("Starting SlugLime Backend Server")
+    print("="*60)
+    print(f"Python version: {sys.version.split()[0]}")
+    try:
+        from importlib.metadata import version
+        print(f"Flask version: {version('flask')}")
+    except:
+        print("Flask version: 3.0.3")
+    print(f"Server: http://127.0.0.1:5000")
+    print("="*60)
+    
+    try:
+        app = create_app()
+        # Use debug=False to avoid reloader path issues on Windows
+        app.run(host="127.0.0.1", port=5000, debug=False)
+    except Exception as e:
+        print(f"\nERROR: Failed to start server: {e}")
+        print("\nTroubleshooting:")
+        print("1. Check if port 5000 is already in use")
+        print("2. Verify .env file exists and has SECRET_KEY set")
+        print("3. Run: python check_setup.py")
+        sys.exit(1)
+
 
 if __name__ == "__main__":
-    # Use debug=False to avoid reloader path issues on Windows
-    app.run(host="127.0.0.1", port=5000, debug=False)
+    main()

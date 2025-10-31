@@ -60,9 +60,11 @@ SlugLime-Asli/
 
 ## 🚀 Quick Start
 
+> **⚠️ Having setup issues?** See our detailed [SETUP_GUIDE.md](SETUP_GUIDE.md) for step-by-step instructions and troubleshooting.
+
 ### Prerequisites
 
-- **Python 3.10+** (Python 3.12 recommended)
+- **Python 3.10+** (Python 3.12 recommended) - **Required!**
 - **Node.js 18+** and npm
 - **Git**
 
@@ -100,11 +102,17 @@ SlugLime-Asli/
    ```
    
    Edit `.env` and set a secure `SECRET_KEY`:
-   ```env
-   SECRET_KEY=your-secure-random-key-here-use-secrets.token_hex(32)
+   ```bash
+   # Generate a secure key:
+   python -c "import secrets; print(secrets.token_hex(32))"
    ```
 
-5. **Run the Flask server**:
+5. **Verify setup (optional but recommended)**:
+   ```bash
+   python check_setup.py
+   ```
+
+6. **Run the Flask server**:
    ```bash
    python app.py
    ```
