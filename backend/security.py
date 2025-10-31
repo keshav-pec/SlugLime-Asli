@@ -1,7 +1,7 @@
 import os, secrets, string
 from passlib.hash import argon2
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
-from config import Config
+from flask import current_app
 
 # ---- Constants ----
 TICKET_ALPHABET = string.ascii_uppercase + string.digits
@@ -29,13 +29,23 @@ def verify_code(raw: str, hashed: str) -> bool:
 
 # ---- Token Utilities ----
 def get_serializer() -> URLSafeTimedSerializer:
-    """Return a configured serializer for issuing/verifying tokens."""
-    return URLSafeTimedSerializer(secret_key=Config.SECRET_KEY, salt="session")
+    """Return a configured serializer for issuing/verifying tokens.
 
-def issue_token(payload: dict, expires_in_seconds: int = 60*60*24*14) -> str:
+    Uses the running Flask app's SECRET_KEY (via current_app) so tokens
+    remain valid across modules and reflect the actual app configuration.
+    """
+    secret_key = None
+    try:
+        secret_key = current_app.config.get("SECRET_KEY")
+    except RuntimeError:
+        # If called outside an app context, fall back to environment var.
+        secret_key = os.getenv("SECRET_KEY")
+    return URLSafeTimedSerializer(secret_key, salt="session")
+
+def issue_token(payload: dict) -> str:
     """
     Issue a signed token containing `payload`.
-    Note: expires_in_seconds is not enforced here but can be used in custom logic.
+    Token expiration is verified in verify_token() with max_age parameter.
     """
     s = get_serializer()
     return s.dumps(payload)

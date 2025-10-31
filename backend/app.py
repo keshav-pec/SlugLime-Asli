@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 
 # Local imports
 from config import Config
@@ -27,26 +28,47 @@ def create_app() -> Flask:
 
     # Setup CORS (Cross-Origin Resource Sharing)
     cors_origins = app.config.get("CORS_ORIGINS", "*")
-    CORS(app, resources={r"/api/*": {"origins": cors_origins}}, supports_credentials=False)
+    # Allow comma-separated origins in config (turn into list)
+    if isinstance(cors_origins, str) and "," in cors_origins:
+        cors_origins = [o.strip() for o in cors_origins.split(",") if o.strip()]
+    CORS(app, resources={
+        r"/api/*": {
+            "origins": cors_origins,
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization", "X-Access-Code"],
+            "expose_headers": ["Content-Type"],
+            "supports_credentials": False
+        }
+    })
 
     # Initialize SQLAlchemy
     db.init_app(app)
 
     # Create necessary folders and tables
     with app.app_context():
-        os.makedirs(app.config.get("UPLOAD_FOLDER", "uploads"), exist_ok=True)
+        # Ensure instance folder exists for SQLite database (use Flask's instance_path)
+        # This guarantees the folder is created at the expected absolute path
+        os.makedirs(app.instance_path, exist_ok=True)
+        # Ensure the configured upload folder exists (Config.UPLOAD_FOLDER is absolute)
+        os.makedirs(app.config.get("UPLOAD_FOLDER", os.path.join(app.instance_path, "uploads")), exist_ok=True)
         db.create_all()
 
     # -----------------------
     # Helper Functions
     # -----------------------
     def get_current_user():
+        """
+        Extract and validate the current user from the Authorization header.
+        Returns User object if valid, None otherwise.
+        """
         auth = request.headers.get("Authorization", "")
         parts = auth.split()
         if len(parts) == 2 and parts[0].lower() == "bearer":
             data = verify_token(parts[1])
             if data and (uid := data.get("uid")):
-                return User.query.get(uid)
+                user = User.query.get(uid)
+                if user:
+                    return user
         return None
 
     def get_report_or_404(ticket: str):
@@ -249,8 +271,13 @@ def create_app() -> Flask:
 
     @app.post("/api/v1/reports")
     def create_report():
-        form = request.get_json(silent=True) or {}
-        errors = ReportCreateSchema().validate(form)
+        # Accept JSON or multipart/form-data (from the frontend using FormData)
+        payload = request.get_json(silent=True)
+        if payload is None:
+            # fallback to form fields for multipart/form-data
+            payload = {k: v for k, v in request.form.items()}
+
+        errors = ReportCreateSchema().validate(payload)
         if errors:
             return jsonify({"errors": errors}), 400
 
@@ -259,13 +286,26 @@ def create_app() -> Flask:
 
         rpt = Report(
             ticket=ticket,
-            title=form["title"].strip(),
-            category=form.get("category", "").strip() or None,
-            body=form["body"].strip(),
+            title=payload["title"].strip(),
+            category=payload.get("category", "").strip() or None,
+            body=payload["body"].strip(),
             code_hash=hash_code(code),
         )
         db.session.add(rpt)
         db.session.commit()
+
+        # Save any uploaded files (optional - filenames prefixed with ticket)
+        upload_folder = app.config.get("UPLOAD_FOLDER")
+        for fkey in request.files:
+            f = request.files.get(fkey)
+            if f and getattr(f, 'filename', None):
+                filename = secure_filename(f.filename)
+                dest = os.path.join(upload_folder, f"{ticket}_{filename}")
+                try:
+                    f.save(dest)
+                except Exception:
+                    # ignore file save errors for now, but could log in the future
+                    pass
 
         return jsonify({"ticket": ticket, "access_code": code}), 201
 

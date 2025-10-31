@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Flask
+instance/
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment variables
+.env
+
+# Uploads
+uploads/
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.pdf
+*.docx
+*.mp4
+*.zip
+
+# Test files
+test_*.py
+*_test.py
+
+# Logs
+*.log
+
+# IDE
+.DS_Store
