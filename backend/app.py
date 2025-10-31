@@ -94,6 +94,18 @@ def create_app() -> Flask:
         return rpt, None, None
 
     # -----------------------
+    # Health Check
+    # -----------------------
+    @app.get("/api/v1/health")
+    def health_check():
+        """Health check endpoint to verify server is running"""
+        return jsonify({
+            "status": "healthy",
+            "message": "SlugLime backend is running",
+            "version": "1.0.0"
+        }), 200
+
+    # -----------------------
     # Auth Routes
     # -----------------------
     @app.post("/api/v1/auth/register")
@@ -392,6 +404,11 @@ def main():
         print("WARNING: SECRET_KEY not set in environment")
         print("Using a randomly generated key (tokens will be invalidated on restart)")
     
+    # Get host and port from config
+    from config import Config
+    host = Config.FLASK_HOST
+    port = Config.FLASK_PORT
+    
     print("="*60)
     print("Starting SlugLime Backend Server")
     print("="*60)
@@ -401,13 +418,13 @@ def main():
         print(f"Flask version: {version('flask')}")
     except:
         print("Flask version: 3.0.3")
-    print(f"Server: http://127.0.0.1:5000")
+    print(f"Server: http://{host}:{port}")
     print("="*60)
     
     try:
         app = create_app()
         # Use debug=False to avoid reloader path issues on Windows
-        app.run(host="127.0.0.1", port=5000, debug=False)
+        app.run(host=host, port=port, debug=False)
     except Exception as e:
         print(f"\nERROR: Failed to start server: {e}")
         print("\nTroubleshooting:")

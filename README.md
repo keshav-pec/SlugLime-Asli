@@ -106,6 +106,14 @@ SlugLime-Asli/
    # Generate a secure key:
    python -c "import secrets; print(secrets.token_hex(32))"
    ```
+   
+   **Optional:** Customize host/port in `.env`:
+   ```env
+   FLASK_HOST=127.0.0.1  # Default
+   FLASK_PORT=5000       # Default
+   ```
+   
+   > 📖 See [ENV_CONFIG_GUIDE.md](ENV_CONFIG_GUIDE.md) for detailed configuration options
 
 5. **Verify setup (optional but recommended)**:
    ```bash
