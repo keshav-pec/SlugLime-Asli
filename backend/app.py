@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
-# Local imports
 from config import Config
 from database import db
 from models import Report, Message, User, Post, Comment, Like, Save
@@ -18,7 +17,6 @@ from security import (
     issue_token, verify_token
 )
 
-# Load environment variables
 load_dotenv()
 
 
@@ -26,11 +24,10 @@ def create_app() -> Flask:
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # Setup CORS (Cross-Origin Resource Sharing)
     cors_origins = app.config.get("CORS_ORIGINS", "*")
-    # Allow comma-separated origins in config (turn into list)
     if isinstance(cors_origins, str) and "," in cors_origins:
         cors_origins = [o.strip() for o in cors_origins.split(",") if o.strip()]
+    
     CORS(app, resources={
         r"/api/*": {
             "origins": cors_origins,
@@ -41,26 +38,14 @@ def create_app() -> Flask:
         }
     })
 
-    # Initialize SQLAlchemy
     db.init_app(app)
 
-    # Create necessary folders and tables
     with app.app_context():
-        # Ensure instance folder exists for SQLite database (use Flask's instance_path)
-        # This guarantees the folder is created at the expected absolute path
         os.makedirs(app.instance_path, exist_ok=True)
-        # Ensure the configured upload folder exists (Config.UPLOAD_FOLDER is absolute)
         os.makedirs(app.config.get("UPLOAD_FOLDER", os.path.join(app.instance_path, "uploads")), exist_ok=True)
         db.create_all()
 
-    # -----------------------
-    # Helper Functions
-    # -----------------------
     def get_current_user():
-        """
-        Extract and validate the current user from the Authorization header.
-        Returns User object if valid, None otherwise.
-        """
         auth = request.headers.get("Authorization", "")
         parts = auth.split()
         if len(parts) == 2 and parts[0].lower() == "bearer":
@@ -72,11 +57,9 @@ def create_app() -> Flask:
         return None
 
     def get_report_or_404(ticket: str):
-        """Fetch a report by ticket or return None if not found."""
         return Report.query.filter_by(ticket=ticket).first()
 
     def require_code_and_report(ticket: str):
-        """Verify report access using access code."""
         code = request.args.get("code", "") or request.headers.get("X-Access-Code", "")
         rpt = get_report_or_404(ticket)
         if not rpt:
@@ -84,10 +67,6 @@ def create_app() -> Flask:
         if not code or not verify_code(code, rpt.code_hash):
             return None, jsonify({"error": "Forbidden"}), 403
         return rpt, None, None
-
-    # -----------------------
-    # Auth Routes
-    # -----------------------
     @app.post("/api/v1/auth/register")
     def register():
         payload = request.get_json(silent=True) or {}
@@ -95,11 +74,9 @@ def create_app() -> Flask:
         if errors:
             return jsonify({"errors": errors}), 400
 
-        # Check if user already exists
         if User.query.filter_by(email=payload["email"].lower()).first():
             return jsonify({"error": "Email already registered"}), 400
 
-        # Create new user
         user = User(
             email=payload["email"].lower(),
             name=payload["name"],
@@ -127,9 +104,6 @@ def create_app() -> Flask:
         token = issue_token({"uid": user.id})
         return jsonify({"token": token, "user": UserPublicSchema().dump(user)}), 200
 
-    # -----------------------
-    # Feed Routes
-    # -----------------------
     @app.get("/api/v1/feed")
     def get_feed():
         user = get_current_user()
@@ -235,12 +209,8 @@ def create_app() -> Flask:
             "comment_count": len(post.comments)
         }), 201
 
-    # -----------------------
-    # Report Routes
-    # -----------------------
     @app.get("/api/v1/reports/public")
     def get_public_reports():
-        """Get public whistleblower reports for the main feed"""
         reports = Report.query.filter_by(status="open").order_by(Report.created_at.desc()).limit(20).all()
 
         items = []
@@ -271,10 +241,8 @@ def create_app() -> Flask:
 
     @app.post("/api/v1/reports")
     def create_report():
-        # Accept JSON or multipart/form-data (from the frontend using FormData)
         payload = request.get_json(silent=True)
         if payload is None:
-            # fallback to form fields for multipart/form-data
             payload = {k: v for k, v in request.form.items()}
 
         errors = ReportCreateSchema().validate(payload)
@@ -294,7 +262,6 @@ def create_app() -> Flask:
         db.session.add(rpt)
         db.session.commit()
 
-        # Save any uploaded files (optional - filenames prefixed with ticket)
         upload_folder = app.config.get("UPLOAD_FOLDER")
         for fkey in request.files:
             f = request.files.get(fkey)
@@ -304,23 +271,19 @@ def create_app() -> Flask:
                 try:
                     f.save(dest)
                 except Exception:
-                    # ignore file save errors for now, but could log in the future
                     pass
 
         return jsonify({"ticket": ticket, "access_code": code}), 201
 
     @app.get("/api/v1/reports/<ticket>")
     def get_report(ticket: str):
-        """Get a specific report by ticket (requires access code)"""
         rpt, err_resp, err_code = require_code_and_report(ticket)
         if err_resp:
             return err_resp, err_code
-        
         return jsonify(ReportPublicSchema().dump(rpt)), 200
 
     @app.post("/api/v1/reports/<ticket>/messages")
     def post_report_message(ticket: str):
-        """Post a message to a report (requires access code)"""
         rpt, err_resp, err_code = require_code_and_report(ticket)
         if err_resp:
             return err_resp, err_code
@@ -346,5 +309,4 @@ def create_app() -> Flask:
 app = create_app()
 
 if __name__ == "__main__":
-    # Use debug=False to avoid reloader path issues on Windows
     app.run(host="127.0.0.1", port=5000, debug=False)

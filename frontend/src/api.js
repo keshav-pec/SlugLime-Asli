@@ -1,14 +1,11 @@
-const API = "http://localhost:5000"; //Remove from here "In Production". add to .env
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export async function createReport(formData) {
   const r = await fetch(`${API}/api/v1/reports`, {
     method: "POST",
     body: formData
-    // Note: Do NOT set Content-Type header when sending FormData
-    // Browser will automatically set it with the correct boundary
   });
   if (!r.ok) {
-    // Try to get error details from response
     const errText = await r.text();
     throw new Error(`Create failed: ${r.status} - ${errText}`);
   }
