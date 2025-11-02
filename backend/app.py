@@ -42,22 +42,8 @@ def create_app() -> Flask:
     # Initialize SQLAlchemy
     db.init_app(app)
 
-    # Create necessary folders and tables
-    with app.app_context():
-        try:
-            # Ensure instance folder exists for SQLite database (use Flask's instance_path)
-            # This guarantees the folder is created at the expected absolute path
-            os.makedirs(app.instance_path, exist_ok=True)
-            # Ensure the configured upload folder exists (Config.UPLOAD_FOLDER is absolute)
-            upload_folder = app.config.get("UPLOAD_FOLDER", os.path.join(app.instance_path, "uploads"))
-            os.makedirs(upload_folder, exist_ok=True)
-            # Create database tables
-            db.create_all()
-            print(f"✓ Database initialized at: {app.config.get('SQLALCHEMY_DATABASE_URI')}")
-            print(f"✓ Upload folder: {upload_folder}")
-        except Exception as e:
-            print(f"ERROR: Failed to initialize database or folders: {e}")
-            raise
+    # Note: Filesystem/database initialization moved to init_app_resources()
+    # to avoid import-time side effects that crash serverless platforms
 
     # -----------------------
     # Helper Functions
@@ -387,6 +373,39 @@ def create_app() -> Flask:
     return app
 
 
+def init_app_resources(app: Flask) -> None:
+    """
+    Initialize filesystem resources (folders, database tables).
+    Call this explicitly when running locally or during deployment setup.
+    DO NOT call during module import - serverless platforms have read-only filesystems.
+    """
+    with app.app_context():
+        try:
+            # Try to create instance folder for SQLite database
+            os.makedirs(app.instance_path, exist_ok=True)
+        except (OSError, PermissionError) as e:
+            # Read-only filesystem (e.g., Vercel) - skip folder creation
+            print(f"⚠ Cannot create instance folder (read-only filesystem): {e}")
+        
+        try:
+            # Try to create upload folder
+            upload_folder = app.config.get("UPLOAD_FOLDER", os.path.join(app.instance_path, "uploads"))
+            os.makedirs(upload_folder, exist_ok=True)
+        except (OSError, PermissionError) as e:
+            print(f"⚠ Cannot create upload folder (read-only filesystem): {e}")
+        
+        try:
+            # Create database tables
+            db.create_all()
+            print(f"✓ Database initialized at: {app.config.get('SQLALCHEMY_DATABASE_URI')}")
+        except Exception as e:
+            print(f"⚠ Database initialization warning: {e}")
+
+
+# Create the Flask app instance (safe for serverless import)
+app = create_app()
+
+
 def main():
     """Main entry point with environment checks"""
     import sys
@@ -420,7 +439,15 @@ def main():
     print("="*60)
     
     try:
-        app = create_app()
+        # Use the module-level app instance
+        global app
+        
+        # Initialize filesystem resources for local development
+        init_app_resources(app)
+        
+        upload_folder = app.config.get("UPLOAD_FOLDER", os.path.join(app.instance_path, "uploads"))
+        print(f"✓ Upload folder: {upload_folder}")
+        
         # Use debug=False to avoid reloader path issues on Windows
         app.run(host=host, port=port, debug=False)
     except Exception as e:
