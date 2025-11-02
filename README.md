@@ -26,43 +26,33 @@ A secure, anonymous whistleblowing and social platform built with Flask and Reac
 
 ## 🏗️ Project Structure
 
+> **📁 Detailed structure guide:** See [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) for complete folder organization and clean-up guidelines.
+
 ```
 SlugLime-Asli/
 ├── backend/                 # Flask REST API
 │   ├── app.py              # Main application & routes
 │   ├── config.py           # Configuration settings
-│   ├── database.py         # Database initialization
 │   ├── models.py           # SQLAlchemy models
 │   ├── schemas.py          # Marshmallow validation schemas
 │   ├── security.py         # Authentication & hashing utilities
-│   ├── requirements.txt    # Python dependencies
-│   ├── .env.example        # Environment variables template
-│   └── README.md           # Backend documentation
+│   └── requirements.txt    # Python dependencies
 │
 └── frontend/               # React SPA
     ├── src/
-    │   ├── components/     # Reusable UI components
-    │   │   ├── Navbar.jsx
-    │   │   ├── Footer.jsx
-    │   │   └── BrandLogo.jsx
-    │   ├── pages/          # Page components
-    │   │   ├── Home.jsx         # Main feed
-    │   │   ├── Submit.jsx       # Anonymous submission form
-    │   │   ├── Status.jsx       # Report tracking
-    │   │   ├── About.jsx
-    │   │   └── Contact.jsx
-    │   ├── api.js          # API client functions
-    │   ├── App.jsx         # Main app component
-    │   └── theme.css       # Global styles
-    ├── package.json
-    └── README.md           # Frontend documentation
+    │   ├── components/     # Reusable components (Navbar, Footer)
+    │   ├── pages/          # Page components (Home, Submit, Status)
+    │   └── api.js          # API client functions
+    └── package.json        # Frontend dependencies
 ```
 
 ## 🚀 Quick Start
 
+> **⚠️ Having setup issues?** See our detailed [SETUP_GUIDE.md](SETUP_GUIDE.md) for step-by-step instructions and troubleshooting.
+
 ### Prerequisites
 
-- **Python 3.10+** (Python 3.12 recommended)
+- **Python 3.10+** (Python 3.12 recommended) - **Required!**
 - **Node.js 18+** and npm
 - **Git**
 
@@ -100,11 +90,25 @@ SlugLime-Asli/
    ```
    
    Edit `.env` and set a secure `SECRET_KEY`:
+   ```bash
+   # Generate a secure key:
+   python -c "import secrets; print(secrets.token_hex(32))"
+   ```
+   
+   **Optional:** Customize host/port in `.env`:
    ```env
-   SECRET_KEY=your-secure-random-key-here-use-secrets.token_hex(32)
+   FLASK_HOST=127.0.0.1  # Default
+   FLASK_PORT=5000       # Default
+   ```
+   
+   > 📖 See [ENV_CONFIG_GUIDE.md](ENV_CONFIG_GUIDE.md) for detailed configuration options
+
+5. **Verify setup (optional but recommended)**:
+   ```bash
+   python check_setup.py
    ```
 
-5. **Run the Flask server**:
+6. **Run the Flask server**:
    ```bash
    python app.py
    ```

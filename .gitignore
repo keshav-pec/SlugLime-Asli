@@ -3,6 +3,11 @@ BUGFIXES.md
 NOTES.md
 TODO.md
 
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
 # Python
 __pycache__/
 *.py[cod]
@@ -54,7 +59,6 @@ instance/
 *.swp
 *.swo
 *~
-.DS_Store
 
 # Node
 node_modules/
