@@ -25,8 +25,9 @@ class Config:
     # Upload folder (note: serverless has read-only filesystem, use cloud storage in production)
     UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", os.path.join(basedir, "uploads"))
     
-    # CORS: Allow all origins in dev, specific domains in production
-    CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000")
+    # CORS: Allow specific domains
+    default_origins = "http://localhost:5173,http://localhost:3000,https://sluglime.vercel.app,https://sluglime.in,https://www.sluglime.in"
+    CORS_ORIGINS = os.getenv("CORS_ORIGINS", default_origins)
     
     # Server configuration (only used for local development)
     FLASK_HOST = os.getenv("FLASK_HOST", "127.0.0.1")

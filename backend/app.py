@@ -28,17 +28,20 @@ def create_app() -> Flask:
     if isinstance(cors_origins, str) and "," in cors_origins:
         cors_origins = [o.strip() for o in cors_origins.split(",") if o.strip()]
     
-    # Configure CORS with explicit settings
     CORS(app, 
-         resources={r"/api/*": {"origins": "*"}},
+         resources={r"/api/*": {"origins": cors_origins}},
          allow_headers=["Content-Type", "Authorization", "X-Access-Code"],
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
          supports_credentials=False)
 
     db.init_app(app)
 
-    # Note: Filesystem/database initialization moved to init_app_resources()
-    # to avoid import-time side effects that crash serverless platforms
+    # Initialize database tables for serverless (read-only safe)
+    with app.app_context():
+        try:
+            db.create_all()
+        except Exception as e:
+            app.logger.warning(f"Database initialization skipped: {e}")
 
     def get_current_user():
         auth = request.headers.get("Authorization", "")
