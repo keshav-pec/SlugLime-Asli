@@ -31,15 +31,13 @@ def create_app() -> Flask:
     # Allow comma-separated origins in config (turn into list)
     if isinstance(cors_origins, str) and "," in cors_origins:
         cors_origins = [o.strip() for o in cors_origins.split(",") if o.strip()]
-    CORS(app, resources={
-        r"/api/*": {
-            "origins": cors_origins,
-            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization", "X-Access-Code"],
-            "expose_headers": ["Content-Type"],
-            "supports_credentials": False
-        }
-    })
+    
+    # Configure CORS with explicit settings
+    CORS(app, 
+         resources={r"/api/*": {"origins": "*"}},
+         allow_headers=["Content-Type", "Authorization", "X-Access-Code"],
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         supports_credentials=False)
 
     # Initialize SQLAlchemy
     db.init_app(app)
