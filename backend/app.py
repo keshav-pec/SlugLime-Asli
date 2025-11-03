@@ -34,12 +34,24 @@ def create_app() -> Flask:
     app = Flask(__name__)
     app.config.from_object(Config)
 
+    # CORS configuration - handle both wildcard and specific origins
     cors_origins = app.config.get("CORS_ORIGINS", "*")
-    if isinstance(cors_origins, str) and "," in cors_origins:
-        cors_origins = [o.strip() for o in cors_origins.split(",") if o.strip()]
     
+    # Parse comma-separated origins
+    if isinstance(cors_origins, str):
+        if cors_origins == "*":
+            # Allow all origins
+            cors_origins = "*"
+        elif "," in cors_origins:
+            # Parse comma-separated list
+            cors_origins = [o.strip() for o in cors_origins.split(",") if o.strip()]
+        else:
+            # Single origin
+            cors_origins = cors_origins.strip()
+    
+    # Configure CORS
     CORS(app, 
-         resources={r"/api/*": {"origins": cors_origins}},
+         resources={r"/*": {"origins": cors_origins}},  # Changed from /api/* to /* to catch all routes
          allow_headers=["Content-Type", "Authorization", "X-Access-Code"],
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
          supports_credentials=False)
@@ -73,8 +85,25 @@ def create_app() -> Flask:
         return rpt, None, None
 
     # -----------------------
-    # Health Check
+    # Root & Health Check
     # -----------------------
+    @app.get("/")
+    def root():
+        """Root endpoint - helps verify the app is running"""
+        return jsonify({
+            "message": "SlugLime API",
+            "version": "1.0.0",
+            "endpoints": {
+                "health": "/api/v1/health",
+                "auth": {
+                    "register": "/api/v1/auth/register",
+                    "login": "/api/v1/auth/login"
+                },
+                "reports": "/api/v1/reports",
+                "feed": "/api/v1/feed"
+            }
+        }), 200
+    
     @app.get("/api/v1/health")
     def health_check():
         """Health check endpoint to verify server is running"""
@@ -338,7 +367,11 @@ def create_app() -> Flask:
     @app.errorhandler(404)
     def not_found(error):
         """Handle 404 errors"""
-        return jsonify({"error": "Not found"}), 404
+        return jsonify({
+            "error": "Not found",
+            "message": f"The requested URL {request.url} was not found on the server.",
+            "available_endpoints": [rule.rule for rule in app.url_map.iter_rules() if rule.rule.startswith('/api')]
+        }), 404
 
     @app.errorhandler(Exception)
     def handle_exception(e):

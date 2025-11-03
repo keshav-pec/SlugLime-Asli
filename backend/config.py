@@ -26,8 +26,14 @@ class Config:
     UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", os.path.join(basedir, "uploads"))
     
     # CORS: Allow specific domains
-    default_origins = "http://localhost:5173,http://localhost:3000,https://sluglime.vercel.app,https://sluglime.in,https://www.sluglime.in"
+    # In production, set CORS_ORIGINS in environment variables to your actual domains
+    # For development, allow localhost. For production, Vercel deployments, set explicitly.
+    default_origins = "http://localhost:5173,http://localhost:3000"
     CORS_ORIGINS = os.getenv("CORS_ORIGINS", default_origins)
+    
+    # If CORS_ORIGINS is "*", allow all origins (use with caution in production)
+    if CORS_ORIGINS == "*":
+        CORS_ORIGINS = "*"
     
     # Server configuration (only used for local development)
     FLASK_HOST = os.getenv("FLASK_HOST", "127.0.0.1")

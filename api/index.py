@@ -1,6 +1,8 @@
 """
 Vercel serverless function entry point.
 This file must be in the api/ directory for Vercel's Python runtime.
+
+CRITICAL: Vercel's Python runtime expects the WSGI app to be named 'app' (not 'handler')
 """
 import sys
 import os
@@ -13,7 +15,7 @@ sys.path.insert(0, backend_dir)
 # Note: Pylance may show an import error, but this works at runtime
 # because we added backend/ to sys.path above
 try:
-    from app import app, init_db  # type: ignore
+    from app import app as flask_app, init_db  # type: ignore
     print("✓ Flask app imported successfully")
     
     # Initialize database tables on first cold start (idempotent - safe to call multiple times)
@@ -28,8 +30,9 @@ except Exception as e:
     print(f"✗ CRITICAL: Failed to import Flask app: {e}")
     import traceback
     traceback.print_exc()
+    # Re-raise to prevent Vercel from serving a broken app
     raise
 
-# Vercel expects a handler or an app variable
-# The app variable is the WSGI application
-handler = app
+# CRITICAL: Vercel expects the WSGI application to be named 'app'
+# This is the actual Flask application that will handle requests
+app = flask_app
