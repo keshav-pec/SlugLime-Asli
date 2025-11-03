@@ -3,8 +3,14 @@ from dotenv import load_dotenv
 
 # Load .env file FIRST, before any other imports that might use environment variables
 # This ensures Config and other modules can read environment variables correctly
+# On Vercel, .env doesn't exist (uses environment variables from dashboard)
 basedir = os.path.abspath(os.path.dirname(__file__))
-load_dotenv(os.path.join(basedir, '.env'))
+env_path = os.path.join(basedir, '.env')
+if os.path.exists(env_path):
+    load_dotenv(env_path)
+else:
+    # Running on serverless platform - environment variables are already set
+    load_dotenv()  # This will load from system environment
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
