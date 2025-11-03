@@ -371,10 +371,15 @@ def init_app_resources(app: Flask) -> None:
             print(f"⚠ Database initialization warning: {e}")
 
 
+# Create the Flask app instance (safe for serverless import)
+app = create_app()
+
+
 def init_db():
     """
     Initialize database tables. Safe to call on serverless platforms.
     Only creates tables if they don't exist - idempotent operation.
+    Call this AFTER app is created (import time is safe).
     """
     with app.app_context():
         try:
@@ -382,10 +387,6 @@ def init_db():
             print("✓ Database tables initialized")
         except Exception as e:
             print(f"⚠ Database init warning: {e}")
-
-
-# Create the Flask app instance (safe for serverless import)
-app = create_app()
 
 
 def main():
