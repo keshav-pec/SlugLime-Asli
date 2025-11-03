@@ -12,7 +12,13 @@ sys.path.insert(0, backend_dir)
 # Import the Flask app
 # Note: Pylance may show an import error, but this works at runtime
 # because we added backend/ to sys.path above
-from app import app  # type: ignore
+from app import app, init_db  # type: ignore
+
+# Initialize database tables on first cold start (idempotent - safe to call multiple times)
+try:
+    init_db()
+except Exception as e:
+    print(f"Warning: Database initialization skipped: {e}")
 
 # Vercel expects a handler or an app variable
 # The app variable is the WSGI application

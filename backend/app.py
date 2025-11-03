@@ -36,12 +36,8 @@ def create_app() -> Flask:
 
     db.init_app(app)
 
-    # Initialize database tables for serverless (read-only safe)
-    with app.app_context():
-        try:
-            db.create_all()
-        except Exception as e:
-            app.logger.warning(f"Database initialization skipped: {e}")
+    # NOTE: Database initialization moved out to avoid import-time side effects
+    # that crash serverless platforms. Call init_db() explicitly when needed.
 
     def get_current_user():
         auth = request.headers.get("Authorization", "")
@@ -373,6 +369,19 @@ def init_app_resources(app: Flask) -> None:
             print(f"✓ Database initialized at: {app.config.get('SQLALCHEMY_DATABASE_URI')}")
         except Exception as e:
             print(f"⚠ Database initialization warning: {e}")
+
+
+def init_db():
+    """
+    Initialize database tables. Safe to call on serverless platforms.
+    Only creates tables if they don't exist - idempotent operation.
+    """
+    with app.app_context():
+        try:
+            db.create_all()
+            print("✓ Database tables initialized")
+        except Exception as e:
+            print(f"⚠ Database init warning: {e}")
 
 
 # Create the Flask app instance (safe for serverless import)

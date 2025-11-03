@@ -1,5 +1,17 @@
 // Use environment variable or default to localhost:5000
+// In production, set VITE_API_URL to your Vercel backend URL
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const IS_DEV = API.includes("localhost");
+
+function handleFetchError(error) {
+  if (error.message.includes('fetch') || error.name === 'TypeError') {
+    const msg = IS_DEV 
+      ? 'Cannot connect to server. Make sure the backend is running on http://localhost:5000'
+      : `Cannot connect to backend at ${API}`;
+    throw new Error(msg);
+  }
+  throw error;
+}
 
 export async function createReport(formData) {
   try {
@@ -16,10 +28,7 @@ export async function createReport(formData) {
     }
     return r.json();
   } catch (error) {
-    if (error.message.includes('fetch')) {
-      throw new Error('Cannot connect to server. Make sure the backend is running on http://localhost:5000');
-    }
-    throw error;
+    handleFetchError(error);
   }
 }
 
@@ -29,10 +38,7 @@ export async function fetchReport(ticket, code) {
     if (!r.ok) throw new Error(`Fetch failed: ${r.status}`);
     return r.json();
   } catch (error) {
-    if (error.message.includes('fetch')) {
-      throw new Error('Cannot connect to server. Make sure the backend is running on http://localhost:5000');
-    }
-    throw error;
+    handleFetchError(error);
   }
 }
 
@@ -46,10 +52,7 @@ export async function postMessage(ticket, code, body) {
     if (!r.ok) throw new Error(`Message failed: ${r.status}`);
     return r.json();
   } catch (error) {
-    if (error.message.includes('fetch')) {
-      throw new Error('Cannot connect to server. Make sure the backend is running on http://localhost:5000');
-    }
-    throw error;
+    handleFetchError(error);
   }
 }
 
@@ -59,9 +62,6 @@ export async function fetchPublicReports() {
     if (!r.ok) throw new Error(`Fetch reports failed: ${r.status}`);
     return r.json();
   } catch (error) {
-    if (error.message.includes('fetch')) {
-      throw new Error('Cannot connect to server. Make sure the backend is running on http://localhost:5000');
-    }
-    throw error;
+    handleFetchError(error);
   }
 }
