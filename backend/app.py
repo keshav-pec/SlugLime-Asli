@@ -16,6 +16,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+from sqlalchemy import text
 
 from config import Config
 from database import db
@@ -107,10 +108,27 @@ def create_app() -> Flask:
     @app.get("/api/v1/health")
     def health_check():
         """Health check endpoint to verify server is running"""
+        # Check database connection
+        db_status = "unknown"
+        db_error = None
+        try:
+            with app.app_context():
+                # Try a simple query
+                db.session.execute(text("SELECT 1"))
+                db_status = "connected"
+        except Exception as e:
+            db_status = "disconnected"
+            db_error = str(e)[:200]  # First 200 chars of error
+        
         return jsonify({
-            "status": "healthy",
+            "status": "healthy" if db_status == "connected" else "degraded",
             "message": "SlugLime backend is running",
-            "version": "1.0.0"
+            "version": "1.0.0",
+            "database": {
+                "status": db_status,
+                "type": "postgresql" if "postgresql" in app.config.get('SQLALCHEMY_DATABASE_URI', '') else "sqlite",
+                "error": db_error
+            }
         }), 200
 
     # -----------------------
@@ -260,7 +278,17 @@ def create_app() -> Flask:
 
     @app.get("/api/v1/reports/public")
     def get_public_reports():
-        reports = Report.query.filter_by(status="open").order_by(Report.created_at.desc()).limit(20).all()
+        """Get public whistleblower reports for the main feed"""
+        try:
+            reports = Report.query.filter_by(status="open").order_by(Report.created_at.desc()).limit(20).all()
+        except Exception as e:
+            # Database connection error
+            app.logger.error(f"Database error in get_public_reports: {e}")
+            return jsonify({
+                "error": "Database connection failed",
+                "message": "Could not fetch reports. Please check database configuration.",
+                "details": str(e)[:200] if app.debug else None
+            }), 500
 
         items = []
         for rpt in reports:
