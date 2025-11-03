@@ -1,7 +1,13 @@
 import os
+from dotenv import load_dotenv
+
+# Load .env file FIRST, before any other imports that might use environment variables
+# This ensures Config and other modules can read environment variables correctly
+basedir = os.path.abspath(os.path.dirname(__file__))
+load_dotenv(os.path.join(basedir, '.env'))
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
@@ -16,8 +22,6 @@ from security import (
     gen_ticket_id, gen_access_code, hash_code, verify_code,
     issue_token, verify_token
 )
-
-load_dotenv()
 
 
 def create_app() -> Flask:
