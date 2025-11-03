@@ -18,14 +18,10 @@ try:
     from app import app as flask_app, init_db  # type: ignore
     print("✓ Flask app imported successfully")
     
-    # Initialize database tables on first cold start (idempotent - safe to call multiple times)
-    try:
-        init_db()
-        print("✓ Database initialized")
-    except Exception as e:
-        print(f"⚠ Database initialization skipped: {e}")
-        # Continue anyway - app can still serve requests without DB init
-        
+    # DON'T initialize database on import - let it happen on first request
+    # This prevents cold start failures if DB is temporarily unavailable
+    # Tables will be created automatically when first accessed
+    
 except Exception as e:
     print(f"✗ CRITICAL: Failed to import Flask app: {e}")
     import traceback

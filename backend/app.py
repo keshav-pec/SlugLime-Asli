@@ -91,9 +91,23 @@ def create_app() -> Flask:
     @app.get("/")
     def root():
         """Root endpoint - helps verify the app is running"""
+        db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', 'NOT SET')
+        # Mask sensitive info but show structure
+        if db_uri and db_uri != 'NOT SET':
+            # Show protocol and host but hide credentials
+            if '@' in db_uri:
+                protocol = db_uri.split('://')[0] if '://' in db_uri else 'unknown'
+                host_part = db_uri.split('@')[1] if '@' in db_uri else 'unknown'
+                db_uri_safe = f"{protocol}://***:***@{host_part}"
+            else:
+                db_uri_safe = "sqlite (local)"
+        else:
+            db_uri_safe = "NOT CONFIGURED"
+            
         return jsonify({
             "message": "SlugLime API",
             "version": "1.0.0",
+            "database": db_uri_safe,
             "endpoints": {
                 "health": "/api/v1/health",
                 "auth": {
@@ -108,6 +122,12 @@ def create_app() -> Flask:
     @app.get("/api/v1/health")
     def health_check():
         """Health check endpoint to verify server is running"""
+        # Lazy initialization: ensure tables exist on first health check
+        try:
+            db.create_all()
+        except Exception as init_error:
+            print(f"⚠ Lazy DB init warning: {init_error}")
+        
         # Check database connection
         db_status = "unknown"
         db_error = None
@@ -279,6 +299,12 @@ def create_app() -> Flask:
     @app.get("/api/v1/reports/public")
     def get_public_reports():
         """Get public whistleblower reports for the main feed"""
+        # Lazy initialization: ensure tables exist on first request
+        try:
+            db.create_all()
+        except Exception as init_error:
+            print(f"⚠ Lazy DB init warning in get_public_reports: {init_error}")
+        
         try:
             reports = Report.query.filter_by(status="open").order_by(Report.created_at.desc()).limit(20).all()
         except Exception as e:
